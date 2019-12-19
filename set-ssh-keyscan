@@ -1,0 +1,8 @@
+#!/bin/bash
+
+HOSTNAMEs=${HOSTNAMEs:-${HOSTNAME}}
+SSH_PORT=${SSH_PORT:-22}
+
+for i in ${HOSTNAMEs[*]}; do
+    ssh-keyscan -t rsa ${i} -p ${SSH_PORT} >> ~/.ssh/known_hosts && ssh-keygen -H -f ~/.ssh/known_hosts
+done

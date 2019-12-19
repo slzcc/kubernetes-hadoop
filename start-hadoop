@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+set -x
+
+USER=`whoami`
+HOST=`hostname -s`
+DOMAIN=`hostname -d`
+LOG_LEVEL=INFO
+HADOOP_VERSION=${HADOOP_VERSION:-2.9.2}
+SERVERS=${SERVERS:-3}
+SSH_PORT=${SSH_PORT:-${SSH_PORT}}
+
+ulimit -n 65535
+
+HADOOP_NAMENODE_TMP_DIR=${HADOOP_NAMENODE_TMP_DIR:-'/data/hadoop/tmp'}
+HADOOP_NAMENODE_NAME_DIR=${HADOOP_NAMENODE_NAME_DIR:-'/data/nn/name'}
+HADOOP_DATANAME_DATA_DIR=${HADOOP_DATANAME_DATA_DIR:-'/data/dn/data'}
+HADOOP_NAMENODE_CHECKPOINT_DIR=${HADOOP_NAMENODE_CHECKPOINT_DIR:-'/data/nn/checkpoint'}
+HADOOP_JOURNALNODE_DIR=${HADOOP_JOURNALNODE_DIR:-'/data/jn/edits'}
+
+isZkfc=${isZkfc:-false}
+isQJOURNAL=${isQJOURNAL:-false}
+isCUSTOM=${isCUSTOM:-false}
+
+function scan_ssh_key() {
+    for (( i=1; i<=$SERVERS; i++ ))
+    do
+        ssh-keyscan -t rsa ${HOSTNAME//-*}-$((i-1)).${DOMAIN} -p ${SSH_PORT} >> ~/.ssh/known_hosts && ssh-keygen -H -f ~/.ssh/known_hosts
+    done
+}
+
+echo "export JAVA_HOME=${JAVA_HOME}" >> /opt/hadoop-${HADOOP_VERSION}/etc/hadoop/hadoop-env.sh
+sed -i "1a\export HDFS_NAMENODE_USER=$(whoami)" /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
+sed -i "1a\export HDFS_JOURNALNODE_USER=$(whoami)" /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
+sed -i "1a\export HDFS_DATANODE_USER=$(whoami)" /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
+sed -i "1a\export HDFS_ZKFC_USER=$(whoami)" /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
+echo "HADOOP_SSH_OPTS=\"-p ${SSH_PORT}\"" >> /opt/hadoop-${HADOOP_VERSION}/etc/hadoop/hadoop-env.sh
+
+for i in ${HADOOP_JOURNALNODE_DIR} ${HADOOP_NAMENODE_NAME_DIR} ${HADOOP_NAMENODE_DATA_DIR} ${HADOOP_NAMENODE_CHECKPOINT_DIR} ${HADOOP_NAMENODE_TMP_DIR}; do [[ ! -e ${i} ]] && mkdir -p ${i} ; done
+
+if [ ${isCUSTOM} == "false" ]; then
+    /usr/sbin/sshd
+    /opt/hadoop-${HADOOP_VERSION}/sbin/hadoop-daemon.sh start journalnode
+
+    until echo rcok | nc ${HOSTNAME//-*}-0.${DOMAIN} ${SSH_PORT}; do >&2 echo "Starting..." && sleep 1 ; done
+    until echo rcok | nc ${HOSTNAME//-*}-1.${DOMAIN} ${SSH_PORT}; do >&2 echo "Starting..." && sleep 1 ; done
+    until echo rcok | nc ${HOSTNAME//-*}-2.${DOMAIN} ${SSH_PORT}; do >&2 echo "Starting..." && sleep 1 ; done
+
+    scan_ssh_key
+
+    if [ ! -e ${HADOOP_NAMENODE_NAME_DIR}/current/VERSION ];then
+
+        if [ ${HOSTNAME##*-} -eq 0 ]; then
+            until /opt/hadoop-${HADOOP_VERSION}/bin/hdfs namenode -format; do >&2 echo "Starting..." && sleep 1 ; done
+            /opt/hadoop-${HADOOP_VERSION}/sbin/hadoop-daemon.sh start namenode
+            /opt/hadoop-${HADOOP_VERSION}/sbin/hadoop-daemon.sh start datanode
+        elif [ ${HOSTNAME##*-} -eq 1 ]; then
+            until echo rcok | nc ${HOSTNAME//-*}-0.${DOMAIN} 50070; do >&2 echo "Starting..." && sleep 1 ; done
+            /opt/hadoop-${HADOOP_VERSION}/bin/hdfs namenode -bootstrapStandby
+            /opt/hadoop-${HADOOP_VERSION}/sbin/hadoop-daemon.sh start namenode
+            /opt/hadoop-${HADOOP_VERSION}/sbin/hadoop-daemon.sh start datanode
+        else
+            /opt/hadoop-${HADOOP_VERSION}/sbin/hadoop-daemon.sh start datanode
+        fi
+
+    else
+
+        if [ ${HOSTNAME##*-} -eq 0 ]; then
+            /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
+        elif [ ${HOSTNAME##*-} -eq 1 ]; then
+            /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
+        else
+            /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
+        fi
+
+    fi
+
+
+    if [ ${isZkfc} == "true"  ];then
+        spawn /opt/hadoop-${HADOOP_VERSION}/bin/hdfs zkfc -formatZK
+        expect "*Y or N*"
+        send "y\r"
+
+        for (( i=1; i<=$SERVERS; i++ ))
+        do
+            ssh -p ${SSH_PORT} ${HOSTNAME//-*}-$((i-1)).${DOMAIN} "ps aux | grep java | grep -v grep | awk '{print $2}' | xargs -i kill -9 {}"
+        done
+
+        /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
+    fi
+fi

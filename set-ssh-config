@@ -1,0 +1,8 @@
+#!/bin/bash
+
+HOSTNAMEs=${HOSTNAMEs:-${HOSTNAME}}
+SSH_PORT=${SSH_PORT:-22}
+
+for i in ${HOSTNAMEs[*]}; do
+    echo -e "Host ${i}\n  Port ${SSH_PORT}" >> ~/.ssh/config
+done

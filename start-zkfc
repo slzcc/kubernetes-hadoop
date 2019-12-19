@@ -1,0 +1,31 @@
+#!/bin/bash
+
+isZkfc=${isZkfc:-false}
+USER=`whoami`
+HOST=`hostname -s`
+DOMAIN=`hostname -d`
+LOG_LEVEL=INFO
+HADOOP_VERSION=${HADOOP_VERSION:-2.9.2}
+SERVERS=${SERVERS:-3}
+SSH_PORT=${SSH_PORT:-22}
+
+if [ ${isZkfc} == "true"  ];then
+
+cat > /tmp/zkfc.f <<EOF
+#!/bin/expect
+set timeout 3
+spawn /opt/hadoop-${HADOOP_VERSION}/bin/hdfs zkfc -formatZK
+expect "*Y or N*"
+send "y\r"
+interact
+EOF
+
+    bash -c "expect /tmp/zkfc.f"
+
+    for (( i=1; i<=$SERVERS; i++ ))
+    do
+        ssh -p ${SSH_PORT} ${HOSTNAME//-*}-$((i-1)).${DOMAIN} "ps aux | grep java | grep -v grep | awk '{print \$2}' | xargs -i kill -9 {}"
+    done
+
+    /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
+fi
