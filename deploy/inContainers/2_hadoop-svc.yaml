@@ -1,0 +1,25 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hdfs-user-dev-01
+  namespace: user
+  labels:
+    app: hadoop
+spec:
+  ports:
+  - port: 8020
+    name: p8020
+  - port: 8480
+    name: p8480
+  - port: 8485
+    name: p8485
+  - port: 50070
+    name: p50070
+  - port: 50010
+    name: p50010
+  - port: 50075
+    name: p50075
+  clusterIP: None
+  selector:
+    app: hadoop
