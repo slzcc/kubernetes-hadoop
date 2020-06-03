@@ -37,6 +37,8 @@ sed -i "1a\export HDFS_DATANODE_USER=$(whoami)" /opt/hadoop-${HADOOP_VERSION}/sb
 sed -i "1a\export HDFS_ZKFC_USER=$(whoami)" /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
 echo "HADOOP_SSH_OPTS=\"-p ${SSH_PORT}\"" >> /opt/hadoop-${HADOOP_VERSION}/etc/hadoop/hadoop-env.sh
 
+ssh-keyscan -p 23312 -t rsa localhost >> ~/.ssh/known_hosts
+
 for i in ${HADOOP_JOURNALNODE_DIR} ${HADOOP_NAMENODE_NAME_DIR} ${HADOOP_NAMENODE_DATA_DIR} ${HADOOP_NAMENODE_CHECKPOINT_DIR} ${HADOOP_NAMENODE_TMP_DIR}; do [[ ! -e ${i} ]] && mkdir -p ${i} ; done
 
 if [ ${isCUSTOM} == "false" ]; then
