@@ -21,6 +21,7 @@ HADOOP_JOURNALNODE_DIR=${HADOOP_JOURNALNODE_DIR:-'/data/jn/edits'}
 isZkfc=${isZkfc:-false}
 isQJOURNAL=${isQJOURNAL:-false}
 isCUSTOM=${isCUSTOM:-false}
+isCheckHOSTNAME=${isCheckHOSTNAME:-false}
 
 function scan_ssh_key() {
     for (( i=1; i<=$SERVERS; i++ ))
@@ -42,9 +43,16 @@ if [ ${isCUSTOM} == "false" ]; then
     /usr/sbin/sshd
     /opt/hadoop-${HADOOP_VERSION}/sbin/hadoop-daemon.sh start journalnode
 
-    for _host in ${HOSTNAMEs[*]}; do
-        until echo rcok | nc ${_host} ${SSH_PORT}; do >&2 echo "Starting..." && sleep 1 ; done
-    done
+    if [ ${isCheckHOSTNAME} == 'false' ]; then 
+        for _host in ${HOSTNAMEs[*]}; do
+            until echo rcok | nc ${_host} ${SSH_PORT}; do >&2 echo "Starting..." && sleep 1 ; done
+        done
+    elif [ ${isCheckHOSTNAME} == 'true' ]; then 
+        for (( i=1; i<=$SERVERS; i++ ))
+        do
+            until echo rcok | nc ${HOSTNAME//-*}-$((i-1)).${DOMAIN} ${SSH_PORT}; do >&2 echo "Starting..." && sleep 1 ; done
+        done
+    fi
 
     scan_ssh_key
 
