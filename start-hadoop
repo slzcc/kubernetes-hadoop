@@ -8,6 +8,7 @@ LOG_LEVEL=INFO
 HADOOP_VERSION=${HADOOP_VERSION:-2.9.2}
 SERVERS=${SERVERS:-3}
 SSH_PORT=${SSH_PORT:-${SSH_PORT}}
+HOSTNAMEs=${HOSTNAMEs:-${HOSTNAME}}
 
 ulimit -n 65535
 
@@ -24,7 +25,7 @@ isCUSTOM=${isCUSTOM:-false}
 function scan_ssh_key() {
     for (( i=1; i<=$SERVERS; i++ ))
     do
-        ssh-keyscan -t rsa ${HOSTNAME//-*}-$((i-1)).${DOMAIN} -p ${SSH_PORT} >> ~/.ssh/known_hosts && ssh-keygen -H -f ~/.ssh/known_hosts
+        ssh-keyscan -p ${SSH_PORT} -t rsa ${HOSTNAME//-*}-$((i-1)).${DOMAIN} >> ~/.ssh/known_hosts
     done
 }
 
@@ -41,9 +42,9 @@ if [ ${isCUSTOM} == "false" ]; then
     /usr/sbin/sshd
     /opt/hadoop-${HADOOP_VERSION}/sbin/hadoop-daemon.sh start journalnode
 
-    until echo rcok | nc ${HOSTNAME//-*}-0.${DOMAIN} ${SSH_PORT}; do >&2 echo "Starting..." && sleep 1 ; done
-    until echo rcok | nc ${HOSTNAME//-*}-1.${DOMAIN} ${SSH_PORT}; do >&2 echo "Starting..." && sleep 1 ; done
-    until echo rcok | nc ${HOSTNAME//-*}-2.${DOMAIN} ${SSH_PORT}; do >&2 echo "Starting..." && sleep 1 ; done
+    for _host in ${HOSTNAMEs[*]}; do
+        until echo rcok | nc ${_host} ${SSH_PORT}; do >&2 echo "Starting..." && sleep 1 ; done
+    done
 
     scan_ssh_key
 
