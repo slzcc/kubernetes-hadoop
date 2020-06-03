@@ -37,14 +37,14 @@ sed -i "1a\export HDFS_DATANODE_USER=$(whoami)" /opt/hadoop-${HADOOP_VERSION}/sb
 sed -i "1a\export HDFS_ZKFC_USER=$(whoami)" /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
 echo "HADOOP_SSH_OPTS=\"-p ${SSH_PORT}\"" >> /opt/hadoop-${HADOOP_VERSION}/etc/hadoop/hadoop-env.sh
 
-ssh-keyscan -p ${SSH_PORT} -t rsa localhost >> ~/.ssh/known_hosts
+/usr/sbin/sshd
 
+ssh-keyscan -p ${SSH_PORT} -t rsa localhost >> ~/.ssh/known_hosts
 /set-ssh-keyscan
 
 for i in ${HADOOP_JOURNALNODE_DIR} ${HADOOP_NAMENODE_NAME_DIR} ${HADOOP_NAMENODE_DATA_DIR} ${HADOOP_NAMENODE_CHECKPOINT_DIR} ${HADOOP_NAMENODE_TMP_DIR}; do [[ ! -e ${i} ]] && mkdir -p ${i} ; done
 
 if [ ${isCUSTOM} == "false" ]; then
-    /usr/sbin/sshd
     /opt/hadoop-${HADOOP_VERSION}/sbin/hadoop-daemon.sh start journalnode
 
     if [ ${isCheckHOSTNAME} == 'false' ]; then 
@@ -101,3 +101,5 @@ if [ ${isCUSTOM} == "false" ]; then
         /opt/hadoop-${HADOOP_VERSION}/sbin/start-dfs.sh
     fi
 fi
+
+ps aux|grep /usr/sbin/sshd| grep -v grep | awk '{print $2}'|xargs -i kill -9 {} || true
