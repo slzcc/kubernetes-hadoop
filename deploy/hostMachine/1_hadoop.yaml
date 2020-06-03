@@ -1,4 +1,3 @@
-
 ---
 apiVersion: policy/v1beta1
 kind: PodDisruptionBudget
@@ -33,7 +32,7 @@ spec:
     spec:
       hostNetwork: true
       nodeSelector:
-        shileizcc.com/schedule-hbase-01: "true"
+        zhangyue-ops.com/schedule-hbase-01: "true"
       tolerations:
       - key: "special"
         operator: "Equal"
@@ -60,7 +59,7 @@ spec:
       containers:
       - name: hdfs
         imagePullPolicy: Always
-        image: slzcc/hadoop:3.2.1-supervisord
+        image: slzcc/hadoop:3.2.1-supervisord-v5
         ports:
         - containerPort: 8485
           name: p8485
@@ -96,13 +95,15 @@ spec:
         - name: HADOOP_NAMENODE_DIR
           value: '/data/nn'
         - name: isCUSTOM
-          value: 'true'
+          value: 'false'
         - name: TZ
           value: Asia/Shanghai
         - name: SSH_PORT
           value: "23312"
         - name: HOSTNAMEs
-          value: '10.100.21.87 10.100.21.88 10.100.21.89'
+          value: 'BJ-M5-K8S-21-87 BJ-M5-K8S-21-88 BJ-M5-K8S-21-89'
+        - name: isCheckHOSTNAME
+          value: 'false'
       volumes:
       - hostPath:
           path: /usr/share/zoneinfo
