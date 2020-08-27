@@ -12,6 +12,7 @@ RUN echo "Acquire::http::Proxy \"http://192.168.7.24:44551\";" > /etc/apt/apt.co
     apt update && \
     apt install -y wget openssh-server supervisor vim net-tools apt-transport-https netcat expect && \
     apt-get install -y fonts-baekmuk fonts-nanum language-pack-zh-hans && \
+    apt-get install -y openssl1.0 libssl1.0-dev libsnappy* && \
     rm -rf /var/lib/apt/lists/* && \
     apt clean
 
